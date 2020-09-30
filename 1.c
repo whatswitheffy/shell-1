@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+
 int strcmp(char *str1, char *str2) {
     int i = -1;
     do {
