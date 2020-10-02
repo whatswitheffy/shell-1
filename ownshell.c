@@ -69,7 +69,6 @@ int main() {
     char STP_WRD[] = "quit";
     list = get_list();
     while (strcmp(list[0], STP_WRD)) {
-        ers = execution(list);
         if (ers)
             break;
         free_list(list);
