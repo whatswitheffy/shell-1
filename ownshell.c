@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-char *get_word(char *last_ch) {
+char *get_word(char *last) {
     char ch, *word = NULL;
     ch = getchar();
     int len = 0;
@@ -17,22 +17,22 @@ char *get_word(char *last_ch) {
         len++;
         ch = getchar();
     }
-    *last_ch = ch;
+    *last = ch;
     word = realloc(word, (len + 1) * sizeof(char));
     word[len] = '\0';
     return word;
 }
 
 char **get_list() {
-    char **list = NULL, last_ch;
+    char **list = NULL, last;
     int count = 1;
     list = malloc(sizeof(char*));
     if (!list)
         return NULL;
     list[0] = get_word(&last_ch);
-    while (last_ch != '\n') {
+    while (last != '\n') {
         list = realloc(list, (count + 1) * sizeof(char*));
-        list[count] = get_word(&last_ch);
+        list[count] = get_word(&last);
         count++;
     }
     list = realloc(list, (count + 1) * sizeof(char*));
