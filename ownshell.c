@@ -65,11 +65,11 @@ int strcmp(char *str1, char *str2) {
 }
 
 int main() {
-    char **list = NULL, ers = 0;
+    char **list = NULL, errs = 0;
     char STP_WRD[] = "quit";
     list = get_list();
     while (strcmp(list[0], STP_WRD)) {
-        if (ers)
+        if (errs)
             break;
         free_list(list);
         list = get_list();
