@@ -53,8 +53,8 @@ void delete_list(char **list) {
 }
 
 int check_io(char **list, int *io) {
-    int flag = 0, fd = 0, i;
-    for (i = 0; list[i] != NULL; i++) {
+    int flag = 0, fd = 0;
+    for (int i = 0; list[i] != NULL; i++) {
         if (list[i][0] == '>') {
             if (list[i + 1] != NULL) {
                 fd = open(list[i + 1], O_WRONLY | O_CREAT | O_TRUNC,
