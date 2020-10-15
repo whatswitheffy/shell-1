@@ -5,6 +5,16 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+int cmp_exit(char **list) {
+    int ans1, ans2;
+    ans1 = strcmp(list[0], "exit");
+    ans2 = strcmp(list[0], "quit");
+    if (!ans1 || !ans2) {
+        return 0;
+    }
+    return 1;
+}
+
 char *get_word(char *end) {
     char ch, *word = NULL;
     int len = 0;
@@ -52,9 +62,19 @@ void delete_list(char **list) {
     return;
 }
 
-void change_list(char **list, int i) {
+int search(char **list, char *word) {
+    int pos;
+    for (pos = 0; list[pos] != NULL; pos++) {
+        if (!strcmp(word, list[pos])) {
+            return pos;
+        }
+    }
+    return -1;
+}
+
+void clean_io(char **list, int i) {
     int j = 0;
-    while(list[i + j + 2] != NULL) {
+    while (list[i + j + 2] != NULL) {
         list[i + j] = list[i + j + 2];
         j++;
     }
@@ -74,11 +94,10 @@ int io_file(char **list, int fd, pid_t pid) {
                                 O_WRONLY | O_CREAT | O_TRUNC,
                                 S_IRUSR | S_IWUSR);
                 }
-                change_list(list, i);
-                if (pid == 0) {
-                    dup2(fd, 1);
-                    break;
-                }
+                clean_io(list, i);
+                dup2(fd, 1);
+                close(fd);
+                break;
             }
         }
         if (list[i][0] == '<') {
@@ -88,32 +107,37 @@ int io_file(char **list, int fd, pid_t pid) {
                                 O_RDONLY | O_CREAT | O_TRUNC,
                                 S_IRUSR | S_IWUSR);
                 }
-                change_list(list, i);
-                if (pid == 0) {
-                    dup2(fd, 0);
-                    break;
-                }
-
+                clean_io(list, i);
+                dup2(fd, 0);
+                close(fd);
+                break;
             }
         }
     }
     return fd;
 }
 
-void infinit(char **list) {
+void implemintation(char **list, pid_t pid, int fd) {
+    if (pid > 0) {
+        wait(NULL);
+    } else {
+        fd = io_file(list, fd);
+        if (execvp(list[0], list) < 0) {
+            perror("Execution failed!\n");
+            close(fd);
+            return;
+        }
+    }
+    return;
+}
+
+void hall_of_funcs(char **list) {
     pid_t pid;
     int fd = 0;
-    while(strcmp(list[0], "exit") && strcmp(list[0], "quit")) {
+    list = get_list();
+    while (cmp_exit(list)) {
         pid = fork();
-        fd = io_file(list, fd, pid);
-        if (pid > 0) {
-            wait(NULL);
-        } else {
-            if (execvp(list[0], list) < 0) {
-                perror("execvp failed!\n");
-                return;
-            }
-        }
+        implemintation(list, pid, fd);
         delete_list(list);
         list = get_list();
     }
@@ -122,8 +146,7 @@ void infinit(char **list) {
 }
 
 int main() {
-    char **list = NULL, flag;
-    list = get_list();
-    infinit(list);
+    char **list = NULL;
+    hall_of_funcs(list);
     return 0;
 }
