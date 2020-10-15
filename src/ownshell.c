@@ -5,6 +5,19 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
+int swap_dir(char **list) {
+    char *sweet_home = getenv("HOME");
+    if (!strcmp(list[0], "cd")) {
+        if(list[1] == NULL || (strcmp(cmd[1], "~") == 0)) {
+            chdir(sweet_home);
+        } else {
+            chdir(cmd[1]);
+        }
+        return 1;
+    }
+    return 0;
+}
+
 int cmp_exit(char **list) {
     int ans1, ans2;
     ans1 = strcmp(list[0], "exit");
@@ -117,6 +130,37 @@ int io_file(char **list, int fd, pid_t pid) {
     return fd;
 }
 
+char ***devide_list(char **list, int *ans, char *dev_word) {
+    char ***cmd = malloc(sizeof(char**));
+    int size = 0, count = 1, words = 0;
+    cmd = NULL;
+    if (!cmd) {
+        perror("devide_list err!\n");
+        return NULL;
+    }
+    for(int i = 0; cmd[i] != NULL; i++) {
+        if (strcmp(cmd[i], dev_word)) {
+            size = (words + 1) * sizeof(char*);
+            cmd[count - 1] = realloc(cmd[count - 1], size);
+            cmd[count - 1][words] = cmd[i];
+            words++;
+        } else {
+            size = (words + 1) * sizeof(char*);
+            cmd[count - 1] = realloc(cmd[count - 1], size);
+            cmd[count - 1][words] = NULL;
+            cmd = realloc(cmd, (count + 1) * sizeof(char**));
+            cmd[count] = NULL;
+            count++:
+            words = 0;
+        }
+    }
+    size = (words + 1) * sizeof(char*);
+    cmd[count - 1] = realloc(cmd[count - 1], size);
+    cmd[count - 1][words] = NULL;
+    *ans = count;
+    return cmd;
+}
+
 void implemintation(char **list, pid_t pid, int fd) {
     if (pid > 0) {
         wait(NULL);
@@ -142,6 +186,28 @@ void hall_of_funcs(char **list) {
         list = get_list();
     }
     delete_list(list);
+    return;
+}
+
+void main_hall(char **list) {
+    int num_dev = 0, conv = 1, res = 0;
+    char ***cmd = devide_list(cmd, &num_dev, "&&");
+    if (num_dev == 1) {
+        free(cmd[0]);
+        free(cmd);
+        cmd = dev_list(cmd, &num_dev, "|");
+        conv = 0;
+    }
+    if (conv == 0) {
+        res = conv1(cmd, num_dev);
+    } else {
+        res = conv2(cmd, num_dev);
+    }
+    if (res == 1)
+        return;
+    for (int i = 0; i < num_dev; i++) {
+        free(cmd[i]);
+    }
     return;
 }
 
