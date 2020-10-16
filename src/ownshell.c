@@ -175,21 +175,7 @@ void implemintation(char **list, pid_t pid, int fd) {
     return;
 }
 
-void hall_of_funcs(char **list) {
-    pid_t pid;
-    int fd = 0;
-    list = get_list();
-    while (cmp_exit(list)) {
-        pid = fork();
-        implemintation(list, pid, fd);
-        delete_list(list);
-        list = get_list();
-    }
-    delete_list(list);
-    return;
-}
-
-void main_hall(char **list) {
+void additional_hall(char **list) {
     int num_dev = 0, conv = 1, res = 0;
     char ***cmd = devide_list(cmd, &num_dev, "&&");
     if (num_dev == 1) {
@@ -211,8 +197,22 @@ void main_hall(char **list) {
     return;
 }
 
+void main_hall(char **list) {
+    pid_t pid;
+    int fd = 0;
+    list = get_list();
+    while (cmp_exit(list)) {
+        pid = fork();
+        implemintation(list, pid, fd);
+        delete_list(list);
+        list = get_list();
+    }
+    delete_list(list);
+    return;
+}
+
 int main() {
     char **list = NULL;
-    hall_of_funcs(list);
+    main_hall(list);
     return 0;
 }
