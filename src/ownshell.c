@@ -2,30 +2,33 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <sys/wait.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
+#include <signal.h>
 
 int swap_dir(char **list) {
     char *sweet_home = getenv("HOME");
     if (!strcmp(list[0], "cd")) {
-        if(list[1] == NULL || (strcmp(cmd[1], "~") == 0)) {
+        if (list[1] == NULL || (!strcmp(list[1], "~"))) {
             chdir(sweet_home);
         } else {
-            chdir(cmd[1]);
+            chdir(list[1]);
         }
         return 1;
     }
     return 0;
 }
 
-int cmp_exit(char **list) {
-    int ans1, ans2;
-    ans1 = strcmp(list[0], "exit");
-    ans2 = strcmp(list[0], "quit");
-    if (!ans1 || !ans2) {
-        return 0;
-    }
-    return 1;
+int cmp_exit(char *word) {
+    int ans = (strcmp(word, "exit") && strcmp(word, "quit"));
+    return ans;
+}
+
+void handler(int signo) {
+    kill(0, SIGINT);
+    printf("\nSIGINT received!\n");
+    exit(1);
 }
 
 char *get_word(char *end) {
@@ -98,121 +101,182 @@ void clean_io(char **list, int i) {
     return;
 }
 
-int io_file(char **list, int fd, pid_t pid) {
-    for (int i = 0; list[i] != NULL; i++) {
-        if (list[i][0] == '>') {
-            if (list[i + 1] != NULL) {
-                if (list[i + 1] != NULL) {
-                    fd = open(list[i + 1],
-                                O_WRONLY | O_CREAT | O_TRUNC,
+void io_file(char **list) {
+    int pos1 = -1, pos2 = -1;
+    int fd1 = 0, fd2 = 1;
+    pos1 = search(list, "<");
+    pos2 = search(list, ">");
+    if (pos2 != -1) {
+        fd2 = open(list[pos2 + 1], O_WRONLY | O_CREAT | O_TRUNC,
                                 S_IRUSR | S_IWUSR);
-                }
-                clean_io(list, i);
-                dup2(fd, 1);
-                close(fd);
-                break;
-            }
-        }
-        if (list[i][0] == '<') {
-            if (list[i + 1] != NULL) {
-                if (list[i + 1] != NULL) {
-                    fd = open(list[i + 1], 
-                                O_RDONLY | O_CREAT | O_TRUNC,
-                                S_IRUSR | S_IWUSR);
-                }
-                clean_io(list, i);
-                dup2(fd, 0);
-                close(fd);
-                break;
-            }
-        }
+        list[pos2] = NULL;
+        dup2(fd2, 1);
+        close(fd2);
     }
-    return fd;
+    if (pos1 != -1) {
+        fd1 = open(list[pos1 + 1], O_RDONLY,
+                                S_IRUSR | S_IWUSR);
+        list[pos1] = NULL;
+        dup2(fd1, 0);
+        close(fd1);
+    }
 }
 
-char ***devide_list(char **list, int *ans, char *dev_word) {
-    char ***cmd = malloc(sizeof(char**));
-    int size = 0, count = 1, words = 0;
-    cmd = NULL;
-    if (!cmd) {
-        perror("devide_list err!\n");
+char ***great_devider(char **list, int *number, char *word) {
+    int words = 0, count = 1, size = 0;
+    char ***list_parts = malloc(sizeof(char**));
+    list_parts[0] = NULL;
+    if (!list_parts) {
+        perror("devider erro!\n");
         return NULL;
     }
-    for(int i = 0; cmd[i] != NULL; i++) {
-        if (strcmp(cmd[i], dev_word)) {
+    for (int i = 0; list[i] != NULL; i++) {
+        if (strcmp(list[i], word) != 0) {
             size = (words + 1) * sizeof(char*);
-            cmd[count - 1] = realloc(cmd[count - 1], size);
-            cmd[count - 1][words] = cmd[i];
+            list_parts[count - 1] = realloc(list_parts[count - 1], size);
+            list_parts[count - 1][words] = list[i];
             words++;
         } else {
             size = (words + 1) * sizeof(char*);
-            cmd[count - 1] = realloc(cmd[count - 1], size);
-            cmd[count - 1][words] = NULL;
-            cmd = realloc(cmd, (count + 1) * sizeof(char**));
-            cmd[count] = NULL;
-            count++:
+            list_parts[count - 1] = realloc(list_parts[count - 1], size);
+            list_parts[count - 1][words] = NULL;
+            list_parts = realloc(list_parts, (count + 1) * sizeof(char**));
+            list_parts[count] = NULL;
+            count++;
             words = 0;
         }
     }
     size = (words + 1) * sizeof(char*);
-    cmd[count - 1] = realloc(cmd[count - 1], size);
-    cmd[count - 1][words] = NULL;
-    *ans = count;
-    return cmd;
+    list_parts[count - 1] = realloc(list_parts[count - 1], size);
+    list_parts[count - 1][words] = NULL;
+    *number = count;
+    return list_parts;
 }
 
-void implemintation(char **list, pid_t pid, int fd) {
-    if (pid > 0) {
-        wait(NULL);
-    } else {
-        fd = io_file(list, fd);
-        if (execvp(list[0], list) < 0) {
-            perror("Execution failed!\n");
-            close(fd);
-            return;
+int implementation(char **list) {
+    io_file(list);
+    if (execvp(list[0], list) < 0) {
+        perror("exec failed!\n");
+        return -1;
+    }
+    return 0;
+}
+
+int conv1(char ***list_parts, int count) {
+    int fd1[2] = {0, 1}, fd2[2] = {0, 1};
+    int pos = -1;
+    pid_t pid;
+    for (int i = 0; i < count; i++) {
+        if (swap_dir(list_parts[i]) == 1) {
+            continue;
+        }
+        if (i != (count - 1)) {
+            pipe(fd2);
+        }
+        pid = fork();
+        pos = search(list_parts[i], "&");
+        if (pos != -1) {
+            list_parts[i][pos] = NULL;
+        }
+        if (pid == 0) {
+            if (i != 0) {
+                dup2(fd1[0], 0);
+                close(fd1[0]);
+                close(fd1[1]);
+            }
+            if (i != (count - 1)) {
+                dup2(fd2[1], 1);
+                close(fd2[0]);
+                close(fd2[1]);
+            }
+            if (implementation(list_parts[i]) == -1)
+                return -1;
+            return 1;
+        } else if (pid > 0) {
+            if (i != 0) {
+                close(fd1[0]);
+                close(fd1[1]);
+            }
+            if (i != (count - 1)) {
+                fd1[0] = fd2[0];
+                fd1[1] = fd2[1];
+            }
         }
     }
-    return;
+    if (count > 1) {
+        close(fd1[0]);
+        close(fd1[1]);
+    }
+    return 0;
 }
 
-void additional_hall(char **list) {
-    int num_dev = 0, conv = 1, res = 0;
-    char ***cmd = devide_list(cmd, &num_dev, "&&");
-    if (num_dev == 1) {
-        free(cmd[0]);
-        free(cmd);
-        cmd = dev_list(cmd, &num_dev, "|");
-        conv = 0;
-    }
-    if (conv == 0) {
-        res = conv1(cmd, num_dev);
-    } else {
-        res = conv2(cmd, num_dev);
-    }
-    if (res == 1)
-        return;
-    for (int i = 0; i < num_dev; i++) {
-        free(cmd[i]);
-    }
-    return;
-}
-
-void main_hall(char **list) {
+int conv2(char ***list_parts, int count) {
+    int pos = -1;
     pid_t pid;
-    int fd = 0;
-    list = get_list();
-    while (cmp_exit(list)) {
+    for (int i = 0; i < count; i++) {
+        if (swap_dir(list_parts[i]) == 1) {
+                continue;
+        }
         pid = fork();
-        implemintation(list, pid, fd);
+        pos = search(list_parts[i], "&");
+        if (pos != -1) {
+            list_parts[i][pos] = NULL;
+        }
+        if (pid == 0) {
+            if (implementation(list_parts[i]) == -1)
+                return -1;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int additional_hall(char **list) {
+    int count = 0, conv = 0, ans = 0;
+    char ***list_parts = great_devider(list, &count, "&&");
+    if (count == 1) {
+        for (int i = 0; i < count; i++) {
+            free(list_parts[i]);
+        }
+        free(list_parts);
+        list_parts = great_devider(list, &count, "|");
+        conv = 1;
+    }
+    if (conv == 1) {
+        ans = conv1(list_parts, count);
+    } else {
+        ans = conv2(list_parts, count);
+    }
+    for (int i = 0; i < count; i++) {
+        free(list_parts[i]);
+    }
+    free(list_parts);
+    return ans;
+}
+
+int major_hall(char **list) {
+    list = get_list();
+    int check = 0;
+    while (cmp_exit(list[0])) {
+        if (strcmp(list[0], "\0") != 0) {
+            check = major_hall(list);
+        }
         delete_list(list);
+        if (check == -1) {
+            return 1;
+        }
         list = get_list();
+        if (check == 1) {
+            return 0;
+        }
     }
     delete_list(list);
-    return;
+    return 0;
 }
 
 int main() {
     char **list = NULL;
-    main_hall(list);
-    return 0;
+    signal(SIGINT, handler);
+    int check = major_hall(list);
+    return check;
 }
