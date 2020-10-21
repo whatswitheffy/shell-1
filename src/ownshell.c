@@ -174,10 +174,6 @@ int conv1(char ***list_parts, int count) {
             pipe(fd2);
         }
         pid = fork();
-        pos = search(list_parts[i], "&");
-        if (pos != -1) {
-            list_parts[i][pos] = NULL;
-        }
         if (pid == 0) {
             if (i != 0) {
                 dup2(fd1[0], 0);
