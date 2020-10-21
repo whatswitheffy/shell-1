@@ -109,7 +109,7 @@ void io_file(char **list) {
     }
 }
 
-char ***great_devider(char **list, int *number, char *word) {
+char ***great_divider(char **list, int *number, char *word) {
     int words = 0, count = 1, size = 0;
     char ***list_parts = malloc(sizeof(char**));
     list_parts[0] = NULL;
@@ -216,13 +216,13 @@ int conv2(char ***list_parts, int count) {
 
 int additional_hall(char **list) {
     int count = 0, conv = 0, ans = 0;
-    char ***list_parts = great_devider(list, &count, "&&");
+    char ***list_parts = great_divider(list, &count, "&&");
     if (count == 1) {
         for (int i = 0; i < count; i++) {
             free(list_parts[i]);
         }
         free(list_parts);
-        list_parts = great_devider(list, &count, "|");
+        list_parts = great_divider(list, &count, "|");
         conv = 1;
     }
     if (conv == 1) {
