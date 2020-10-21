@@ -88,19 +88,6 @@ int search(char **list, char *word) {
     return -1;
 }
 
-void clean_io(char **list, int i) {
-    int j = 0;
-    while (list[i + j + 2] != NULL) {
-        list[i + j] = list[i + j + 2];
-        j++;
-    }
-    j--;
-    list[i + j] = NULL;
-    free(list[i + j + 1]);
-    free(list[i + j + 2]);
-    return;
-}
-
 void io_file(char **list) {
     int pos1 = -1, pos2 = -1;
     int fd1 = 0, fd2 = 1;
